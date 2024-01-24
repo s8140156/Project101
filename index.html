@@ -21,6 +21,10 @@
         let map;
         let currentPosition;
         let selectedRestaurant;
+        let marker; //定位marker
+        let directionsService; //取得路線資訊
+        let directionsRenderer; //把路線畫出來
+        let infoWindow; //對話框
 
         function initMap() {
             //載入的程式庫最後面有callback=initMap",指的是會自動執行initMap的function
@@ -40,35 +44,85 @@
                 map.setCenter(currentPosition);
                 map.setZoom(16);
 
-                const autocomplete= new google.maps.places.Autocomplete(
+                const autocomplete = new google.maps.places.Autocomplete(
                     document.getElementById('search-input'), //第一個參數帶input id
                     {
-                        types:['restaurant'], //第二個參數帶object陣列 搜尋條件：餐廳
-                        bounds:{
-                            east: currentPosition.Ing+0.001,
-                            west: currentPosition.Ing-0.001,
-                            south: currentPosition.Lat-0.001,
-                            north: currentPosition.Lat+0.001,  //這邊的設定只會搜尋方圓100公尺內的餐廳,以這個區域為優先
+                        types: ['restaurant'], //第二個參數帶object陣列 搜尋條件：餐廳
+                        bounds: {
+                            east: currentPosition.Ing + 0.001,
+                            west: currentPosition.Ing - 0.001,
+                            south: currentPosition.Lat - 0.001,
+                            north: currentPosition.Lat + 0.001,  //這邊的設定只會搜尋方圓100公尺內的餐廳,以這個區域為優先
                         },
-                        strictBounds:false, //如果預設是true就只會搜尋上方範圍, false就擴大搜尋
+                        strictBounds: false, //如果預設是true就只會搜尋上方範圍, false就擴大搜尋
 
                     }
                 );
-                autocomplete.addListener('place_changed',function(){  //每當點選某個地點 就會自動呼叫function
-                    const place=autocomplete.getPlace(); //取得選取到的餐廳資訊(會是所有資訊)
+                autocomplete.addListener('place_changed', function () {  //每當點選某個地點 就會自動呼叫function
+                    const place = autocomplete.getPlace(); //取得選取到的餐廳資訊(會是所有資訊)
                     // console.log(place);
-                    selectedRestaurant={
+                    selectedRestaurant = {
                         location: place.geometry.location,
                         placeId: place.place_id,
                         name: place.name,
                         address: place.formatted_address,
-                        phoneNumber: place.formatted_address,
-                        rating: ,
-
+                        phoneNumber: place.formatted_phone_number,
+                        rating: place.rating,
+                    };
+                    // console.log(selectedRestaurant);
+                    map.setCenter(selectedRestaurant.location);
+                    if (!marker) {
+                        marker = new google.maps.Marker({
+                            map: map,
+                        });
                     }
-                })
-            });
 
+                    marker.setPosition(selectedRestaurant.location);
+
+                    if (!directionsService) {
+                        directionsService = new google.maps.DirectionsService();
+                    }
+                    if (!directionsRenderer) {
+                        directionsRenderer = new google.maps.DirectionsRenderer({
+                            map: map, //指定畫在地圖上
+                        });
+                    }
+                    directionsRenderer.set('directions', null); //確定renderer是清空的使用set()
+
+                    directionsService.route({ //取得路線
+                        origin: new google.maps.LatLng(
+                            currentPosition.lat,
+                            currentPosition.lng
+                        ),
+                        destination: {
+                            placeId: selectedRestaurant.placeId,
+                        },
+                        travelMode: 'WALKING',
+                    },
+                        function (response, status) {
+                            if (status === 'OK') {
+                                directionsRenderer.setDirections(response);
+
+                                if (!infoWindow) {
+                                    infoWindow = new google.maps.InfoWindow();
+
+                                }
+                                infoWindow.setContent(
+                                    `
+                                <h3>${selectedRestaurant.name}</h3>
+                                <div>地址：${selectedRestaurant.address}</div>
+                                <div>電話：${selectedRestaurant.phoneNumber}</div>
+                                <div>評分：${selectedRestaurant.rating}</div>
+                                <div>步行時間：${response.routes[0].legs[0].duration.text}</div>
+                                `
+                                    //步行時間裡面的內容可以用console.log(response)去看裡面有什麼資訊
+                                );
+                                infoWindow.open(map, marker);
+                            }
+                        }
+                    );
+                });
+            });
         }
 
 
@@ -77,7 +131,7 @@
     <!-- 載入google程式庫(地點介面集服務) -->
     <!-- 要把取得的金鑰copy至YOUR_API_KEY -->
     <script async
-        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCEn-yy6sbvoSeRVgfKOo5ZHr44GHl9WMg&libraries=places&callback=initMap">
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCEn-yy6sbvoSeRVgfKOo5ZHr44GHl9WMg&libraries=places&callback=initMap&regin=TW&language=zh-TW">
         </script>
 
 </body>
