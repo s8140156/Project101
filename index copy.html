@@ -171,16 +171,7 @@
                     const restaurantList=JSON.parse(localStorage.getItem('restaurantList')) || [];
                     selectedRestaurant=restaurantList.find(function(restaurant){
                         return restaurant.name===segment.text;
-                    })
-                    selectedRestaurant = {
-                        location: place.geometry.location,
-                        placeId: place.place_id,
-                        name: place.name,
-                        address: place.formatted_address,
-                        phoneNumber: place.formatted_phone_number,
-                        rating: place.rating,
-                    };
-                    console.log(selectedRestaurant);
+                    });
                     map.setCenter(selectedRestaurant.location);
                     if (!marker) {
                         marker = new google.maps.Marker({
