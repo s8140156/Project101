@@ -148,7 +148,7 @@
                 </li>
             `
         });
-        const colors=['#A1A2A6','#024959','#F2C12E','#593E25'];
+        const colors=['#105057','#898C8B','#FF81D0','#400036'];
         const wheel=new Winwheel({
             numSegments:restaurantList.length,
             segments:restaurantList.map((restaurant,index)=>{
@@ -164,12 +164,65 @@
                 spins:16,
                 easing:'Power4.easeInOut',
                 callbackFinished:function(segment){
+                    document.getElementById('wheel').style.display='none';
+                    wheel.rotationAngle=0;
+                    wheel.draw();
                     window.alert(segment.text);
                     const restaurantList=JSON.parse(localStorage.getItem('restaurantList')) || [];
                     selectedRestaurant=restaurantList.find(function(restaurant){
                         return restaurant.name===segment.text;
-                    })
-                    
+                    });
+                    map.setCenter(selectedRestaurant.location);
+                    if (!marker) {
+                        marker = new google.maps.Marker({
+                            map: map,
+                        });
+                    }
+
+                    marker.setPosition(selectedRestaurant.location);
+
+                    if (!directionsService) {
+                        directionsService = new google.maps.DirectionsService();
+                    }
+                    if (!directionsRenderer) {
+                        directionsRenderer = new google.maps.DirectionsRenderer({
+                            map: map, //指定畫在地圖上
+                        });
+                    }
+                    directionsRenderer.set('directions', null); //確定renderer是清空的使用set()
+
+                    directionsService.route({ //取得路線
+                        origin: new google.maps.LatLng(
+                            currentPosition.lat,
+                            currentPosition.lng
+                        ),
+                        destination: {
+                            placeId: selectedRestaurant.placeId,
+                        },
+                        travelMode: 'WALKING',
+                    },
+                        function (response, status) {
+                            if (status === 'OK') {
+                                directionsRenderer.setDirections(response);
+
+                                if (!infoWindow) {
+                                    infoWindow = new google.maps.InfoWindow();
+
+                                }
+                                infoWindow.setContent(
+                                    `
+                                <h3>${selectedRestaurant.name}</h3>
+                                <div>地址：${selectedRestaurant.address}</div>
+                                <div>電話：${selectedRestaurant.phoneNumber}</div>
+                                <div>評分：${selectedRestaurant.rating}</div>
+                                <div>步行時間：${response.routes[0].legs[0].duration.text}</div>
+                                `
+                                    //步行時間裡面的內容可以用console.log(response)去看裡面有什麼資訊
+                                );
+                                infoWindow.open(map, marker);
+                            }
+                        }
+                    );
                     
                 }
 
@@ -182,24 +235,38 @@
                 ${selectedRestaurant.name}
                 <button class='btn-close float-end remove'></button>
                 </li>
-            `
+            `;
             const restaurantList=JSON.parse(localStorage.getItem('restaurantList')) || []; //做判斷 如果沒有字串 就給空陣列
+            const color=colors[restaurantList.length % 4];
+            wheel.addSegment({
+                fillStyle:color,
+                text:selectedRestaurant.name,
+                strokeStyle:'white',
+            });
+            wheel.draw();
+
             restaurantList.push(selectedRestaurant);
             localStorage.setItem('restaurantList',JSON.stringify(restaurantList));
-        })
+        });
         document.getElementById('r-list').addEventListener('click',function(e){
             if(e.target.classList.contains('remove')){
                 e.target.parentNode.remove();
                 const restaurantName= e.target.parentNode.innerText.trim();
 
                 const restaurantList=JSON.parse(localStorage.getItem('restaurantList')) || []; //做判斷 如果沒有字串 就給空陣列
+                const index=restaurantList.findIndex(function(restaurant){
+                    return restaurant.name===restaurantName;
+                });
+                wheel.deleteSegment(index+1); //刪除餐廳
+                wheel.draw(); //更新輪盤
+
                 const newRestaurantList=restaurantList.filter(function(restaurant){
                     if(restaurant.name===restaurantName) return false;
                     return true;
                 })
-                localStorage.setItem('restaurantList',JSON.stringify(restaurantList));
+                localStorage.setItem('restaurantList',JSON.stringify(newRestaurantList));
             }
-        })
+        });
         document.getElementById('draw').addEventListener('click',function(){
             document.getElementById('wheel').style.display='block';
             wheel.startAnimation();
